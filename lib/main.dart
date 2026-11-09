@@ -2125,7 +2125,7 @@ class _ModelSheetState extends State<ModelSheet> {
                               kind: DNoticeKind.warning,
                               body: L.t('model.confirmModel', {'model': m.model}) +
                                   L.t('model.confirmBody') +
-                                  '$message',
+                                  message,
                               actions: [
                                 DBtn(label: L.t('model.keepCurrent'), kind: DBtnKind.outline,
                                     onPressed: () => Navigator.of(c).pop(false)),

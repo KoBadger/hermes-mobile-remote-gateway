@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hermes_mobile/design.dart';
+import 'package:hermes_mobile/l10n.dart';
 import 'package:hermes_mobile/main.dart';
 import 'package:hermes_mobile/store.dart';
 
@@ -231,7 +232,7 @@ void main() {
       ),
     ));
     expect(find.text('bash'), findsOneWidget);
-    await tester.tap(find.text('Copy'));
+    await tester.tap(find.text(L.t('common.copy')));
     await tester.pump(const Duration(milliseconds: 400));
     expect(copied, 1);
     expect(tester.takeException(), isNull);
