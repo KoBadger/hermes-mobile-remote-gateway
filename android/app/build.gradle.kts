@@ -15,7 +15,7 @@ val appVariant = System.getenv("HERMES_APP_VARIANT")?.takeIf { it.isNotBlank() }
 android {
     namespace = "ai.ailigent.hermes_mobile"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion  // disabled: app has no native sources
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
