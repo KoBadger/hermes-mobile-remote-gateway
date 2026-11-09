@@ -21,7 +21,7 @@
 
 ## Screenshots
 
-Real captures of the 1.3.0 Liquid Glass design from an Android phone, not mockups. Private session titles, the gateway host and the status bar are removed; original unredacted captures are not published. The app currently uses **Arabic RTL UI**, with model names and Thinking levels in English. Repository documentation is in English.
+Real captures of the 1.3.0 Liquid Glass design from an Android phone, not mockups. Private session titles, the gateway host and the status bar are removed; original unredacted captures are not published. Screenshots show the **Arabic RTL UI**; model names and Thinking levels stay English in both languages. Repository documentation is in English.
 
 <p>
   <img src="docs/screenshots/chat.png" alt="Hermes Agent Android chat with a real demo response under the floating glass top bar and composer" width="245">
@@ -43,6 +43,17 @@ Real captures of the 1.3.0 Liquid Glass design from an Android phone, not mockup
 - **Watch background work:** a live panel above the composer lists long-running `terminal(background=true)` processes and delegated subagents for the open session, streams their output, and lets you stop a running one or dismiss a finished one.
 - **Connect your way:** save multiple gateways and switch with one tap — a private Tailscale host, or a public HTTPS deployment with no Tailscale at all.
 - **Sign in securely:** credentials stored with Flutter Secure Storage; optional biometric app unlock.
+- **Read it in your language:** Arabic (RTL, the original UI) and English (LTR), chosen from the phone's language. Model names and Thinking levels stay English.
+
+## Languages
+
+The app is **Arabic by default for Arabic phones and English for everything else**. There is one widget tree: a small strings table (`lib/l10n.dart`, an `ar` and an `en` map keyed by dotted ids) is read through `L.t('id')`, and the app root wraps the tree in a `Directionality` built from the active language, so Arabic lays out right-to-left and English left-to-right without a second set of screens.
+
+- Picked at startup from the device locale: `Language = Arabic` (or `ar-*`) keeps the original copy, every other locale falls back to English.
+- `L.t('id', {'name': value})` substitutes `{name}` placeholders, so interpolated copy stays one expression.
+- Nothing is translated by the operating system: the app does not rely on the system locale for its own copy, only to choose the language.
+- Android's foreground-service notification uses `res/values/strings.xml` (English) and `res/values-ar/strings.xml` (Arabic).
+- Adding a language means adding one map to `lib/l10n.dart` and one entry to `AppLang`.
 
 ## Download and install
 
@@ -107,7 +118,7 @@ Restart the Hermes desktop app once. The command palette (`Cmd+K`) then gains **
 
 ## Current limits
 
-- This is an early community release. Arabic RTL is the current app UI; English app localization is not implemented.
+- This is an early community release. The UI ships in **Arabic (RTL)** and **English (LTR)**; Japanese, Chinese and other languages are not translated yet.
 - Background notifications are **local Android notifications**, not FCM/cloud push. Force-stop, reboot, OEM battery restrictions or a disconnected VPN can interrupt delivery.
 - A short real-device background test observed the same running process, a foreground service and a completion notification. It does not prove hours-long Doze reliability.
 - Session pull works across backend processes of the **same Hermes home/profile** (for example the phone's `hermes serve` and the desktop app's own backend). Each backend that may hold a session must run the server plugin to release it cooperatively; otherwise it is only released once it is idle.

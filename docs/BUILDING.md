@@ -22,6 +22,19 @@ export GRADLE_OPTS='-Dorg.gradle.workers.max=2 -Dorg.gradle.jvmargs=-Xmx3g'
 
 Use a real Android phone to validate background behavior, lifecycle transitions, notification permissions and layout. Unit/widget tests cover protocol and UI regressions but cannot establish long-term device reliability.
 
+## Localization
+
+The UI ships in Arabic (RTL) and English (LTR). There is no code generation step and no added package:
+
+- `lib/l10n.dart` holds `L.ar` and `L.en`, two maps keyed by dotted ids. Read them through `L.t('id')`, or `L.t('id', {'name': value})` for `{name}` placeholders.
+- The app picks the language once at startup from the device locale (`L.fromLocales`): `ar` keeps Arabic, everything else falls back to English. The tree is wrapped in a single `Directionality` built from `L.dir`, so there is one widget tree, not one per language.
+- User-visible strings must not be hardcoded: add an id to both maps and call `L.t`. Arabic is the original copy, so a new string needs Arabic too.
+- Text layout inside a mixed-direction row goes through `dDirOf()`, which follows the value's own script and the active direction for values with no strong letters.
+- Android's foreground-service notification uses `res/values/strings.xml` (English) and `res/values-ar/strings.xml` (Arabic).
+- Tests run with Arabic pinned (`test/flutter_test_config.dart`), because the existing assertions quote the original copy. `test/localization_test.dart` covers the English side and checks that both tables carry the same ids and placeholders.
+
+To add a language: add a case to `AppLang`, add a map next to `ar`/`en`, extend `L.t`'s table lookup, add the locale to `L.supportedLocales`, and return its direction from `L.dir`.
+
 ## Signing
 
 With no signing environment, `flutter build apk --release` uses the Android **development/debug key**. That is convenient for local testing, not the maintainer's public release identity.

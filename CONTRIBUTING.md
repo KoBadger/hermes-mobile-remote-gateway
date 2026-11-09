@@ -3,7 +3,7 @@
 Issues and pull requests are welcome. This is an independent Android client, not the upstream Hermes Agent repository.
 
 - Use English for issue reports, documentation and pull-request descriptions.
-- Keep the current Arabic RTL app layout usable on narrow screens and with enlarged text. Model identifiers and Thinking levels remain English.
+- Keep the app usable on narrow screens and with enlarged text in **both** languages, Arabic (RTL) and English (LTR). Model identifiers and Thinking levels remain English.
 - Add a failing regression test before changing behavior; run analysis and the full suite after the fix.
 - Test Android behavior on a real phone when possible. Widget tests do not prove Doze reliability or notification delivery.
 - Never silently confirm expensive/context-sensitive model changes or replay side-effecting RPCs after reconnecting.

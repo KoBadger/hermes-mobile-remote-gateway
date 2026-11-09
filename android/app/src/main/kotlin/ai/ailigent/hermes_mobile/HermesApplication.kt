@@ -37,7 +37,7 @@ class HermesApplication : Application() {
                         result.success(null)
                     }
                     "update" -> {
-                        GatewayService.update(call.argument<String>("status") ?: "متصل")
+                        GatewayService.update(call.argument<String>("status") ?: getString(R.string.gateway_status_connected))
                         result.success(null)
                     }
                     "stop" -> {

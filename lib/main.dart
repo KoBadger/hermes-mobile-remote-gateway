@@ -21,6 +21,7 @@ import 'links.dart';
 import 'notify.dart';
 import 'background_connection.dart';
 import 'store.dart';
+import 'l10n.dart';
 
 // Hermes Desktop dark tokens (apps/desktop/src/styles.css).
 const kBg = D.bg;
@@ -48,7 +49,7 @@ Future<bool> canUseBiometric() async {
 Future<bool> biometricCheck() async {
   try {
     return await _auth.authenticate(
-      localizedReason: 'أكّد هويتك لفتح Hermes',
+      localizedReason: L.t('bio.reason'),
       persistAcrossBackgrounding: true,
     );
   } catch (_) {
@@ -60,6 +61,8 @@ typedef IconCtor = Widget Function({Color? color, double? width, double? height}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Arabic phones keep the original RTL UI; everything else gets English.
+  L.fromLocales(WidgetsBinding.instance.platformDispatcher.locales);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: kBg,
     systemNavigationBarColor: kBg,
@@ -128,14 +131,18 @@ class HermesApp extends StatelessWidget {
             TargetPlatform.android: DPageTransitions(),
           }),
         ),
-        locale: const Locale('ar'),
-        supportedLocales: const [Locale('ar'), Locale('en')],
+        locale: L.locale,
+        supportedLocales: L.supportedLocales,
         localizationsDelegates: const [
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        builder: (context, child) => ShadAppBuilder(child: child!),
+        // One tree, one Directionality: Arabic lays out RTL, English LTR.
+        builder: (context, child) => Directionality(
+          textDirection: L.dir,
+          child: ShadAppBuilder(child: child!),
+        ),
         home: const Boot(),
       ),
     );
@@ -180,11 +187,11 @@ class _BootState extends State<Boot> {
     setState(() => api = a);
     if (!await canUseBiometric() || !mounted) return;
     final yes = await showDDialog<bool>(context, (c) => DDialog(
-      title: 'الدخول بالبصمة',
-      body: 'حُفظت بيانات الدخول على هذا الجهاز. هل تريد طلب البصمة عند فتح التطبيق؟',
+      title: L.t('bio.title'),
+      body: L.t('bio.body'),
       actions: [
-        DBtn(label: 'لاحقًا', kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
-        DBtn(label: 'تفعيل', onPressed: () => Navigator.of(c).pop(true)),
+        DBtn(label: L.t('common.later'), kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
+        DBtn(label: L.t('common.enable'), onPressed: () => Navigator.of(c).pop(true)),
       ],
     ));
     if (yes == true && await biometricCheck()) await HermesApi.setBiometric(true);
@@ -221,9 +228,9 @@ class _BootState extends State<Boot> {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             ic(tb.Fingerprint.new, size: 56, color: kFg),
             const SizedBox(height: 16),
-            const Text('Hermes مقفل', style: TextStyle(color: kFg, fontSize: 18, fontWeight: FontWeight.w600)),
+            Text(L.t('lock.locked'), style: const TextStyle(color: kFg, fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 20),
-            DBtn(label: 'فتح بالبصمة', icon: tb.Fingerprint.new, onPressed: _unlock),
+            DBtn(label: L.t('lock.unlock'), icon: tb.Fingerprint.new, onPressed: _unlock),
           ]),
         )),
       );
@@ -409,7 +416,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16),
               Text('Hermes', style: txt(24, weight: FontWeight.w700)),
               const SizedBox(height: 4),
-              Text('المساعد الشخصي على أجهزتك', style: txt(13, color: D.muted)),
+              Text(L.t('login.tagline'), style: txt(13, color: D.muted)),
               const SizedBox(height: 22),
               DGlass(
                 pad: const EdgeInsets.all(18),
@@ -417,11 +424,11 @@ class _LoginPageState extends State<LoginPage> {
                                 tint: G.panelTint,
           panel: true,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  _field('عنوان الخادم', url, tb.World.new),
+                  _field(L.t('login.serverAddress'), url, tb.World.new),
                   const SizedBox(height: 14),
-                  _field('اسم المستخدم', user, tb.User.new),
+                  _field(L.t('login.username'), user, tb.User.new),
                   const SizedBox(height: 14),
-                  _field('كلمة المرور', pass, tb.Lock.new, obscure: true, onSubmitted: (_) => submit()),
+                  _field(L.t('login.password'), pass, tb.Lock.new, obscure: true, onSubmitted: (_) => submit()),
                   if (error != null) ...[
                     const SizedBox(height: 14),
                     Container(
@@ -440,7 +447,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                   const SizedBox(height: 20),
                   DBtn(
-                    label: busy ? 'جارٍ الاتصال...' : 'دخول',
+                    label: busy ? L.t('login.connecting') : L.t('login.submit'),
                     icon: tb.Login.new,
                     onPressed: busy ? null : submit,
                   ),
@@ -467,7 +474,7 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 14),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 DBtn(
-                  label: 'إضافة بوابة',
+                  label: L.t('login.addGateway'),
                   kind: DBtnKind.ghost,
                   dense: true,
                   icon: tb.Plus.new,
@@ -523,7 +530,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final ok = await backgroundConnection.start();
     if (!mounted) return;
     if (!ok) {
-      _snack('تعذر تشغيل الخلفية. افتح التطبيق وأعد المحاولة.');
+      _snack(L.t('bg.startFailed'));
     } else {
       _backgroundStatus();
     }
@@ -531,9 +538,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   void _backgroundStatus() {
     final status = switch (gw.state) {
-      LinkState.connected => 'متصل — تصلك تنبيهات عند انتهاء الرد',
-      LinkState.connecting => 'جارٍ استعادة الاتصال بالخادم',
-      LinkState.offline => 'الاتصال منقطع — ستتم إعادة المحاولة تلقائيًا',
+      LinkState.connected => L.t('link.connected'),
+      LinkState.connecting => L.t('link.connecting'),
+      LinkState.offline => L.t('link.offline'),
     };
     unawaited(backgroundConnection.update(status));
   }
@@ -549,14 +556,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final status = await backgroundConnection.status();
     if (!mounted) return;
     await showDDialog<void>(context, (c) => DDialog(
-      title: 'الاتصال في الخلفية',
-      body: '${status['running'] == true ? 'خدمة الاتصال تعمل.' : 'خدمة الاتصال متوقفة.'} '
-          '${status['batteryExempt'] == true ? 'تحسين البطارية غير مفعّل لهذا التطبيق.' : 'للاستمرار عند إطفاء الشاشة، افتح إعدادات البطارية واختر Hermes ثم «عدم التحسين» أو «غير مقيّد». قد تحتاج الإعداد نفسه لـ Tailscale.'} '
-          'الخدمة تستهلك بطارية إضافية. الإيقاف الإجباري من Android يوقفها.',
+      title: L.t('bg.title'),
+      body: [
+        status['running'] == true ? L.t('bg.serviceRunning') : L.t('bg.serviceStopped'),
+        status['batteryExempt'] == true ? L.t('bg.batteryUnrestricted') : L.t('bg.batteryHelp'),
+        L.t('bg.cost'),
+      ].join(' '),
       actions: [
-        DBtn(label: 'إعدادات البطارية', kind: DBtnKind.outline,
+        DBtn(label: L.t('bg.batterySettings'), kind: DBtnKind.outline,
             onPressed: () => backgroundConnection.openBatterySettings()),
-        DBtn(label: status['running'] == true ? 'إيقاف الخلفية' : 'تشغيل الخلفية',
+        DBtn(label: status['running'] == true ? L.t('bg.stop') : L.t('bg.start'),
             onPressed: () {
               Navigator.of(c).pop();
               if (status['running'] == true) {
@@ -599,13 +608,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _pullDialogOpen = true;
     try {
       final ok = await showDDialog<bool>(context, (c) => DDialog(
-            title: 'الجلسة مفتوحة على جهاز آخر',
+            title: L.t('pull.title'),
             body: store.pullError ??
-                'هذه الجلسة مفتوحة الآن على جهاز آخر. اسحبها إلى الجوال لتكمل من هنا؛ '
-                    'وإن كان هناك دور قيد التشغيل فسيُطلب من ذلك الجهاز إيقافه أولًا.',
+                L.t('pull.body1') +
+                    L.t('pull.body2'),
             actions: [
-              DBtn(label: 'اسحب إلى الجوال', onPressed: () => Navigator.of(c).pop(true)),
-              DBtn(label: 'إلغاء', kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
+              DBtn(label: L.t('pull.action'), onPressed: () => Navigator.of(c).pop(true)),
+              DBtn(label: L.t('common.cancel'), kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
             ],
           ));
       if (ok == true) {
@@ -728,13 +737,13 @@ class LinkBanner extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            connecting ? 'جارٍ الاتصال بالخادم...' : 'غير متصل. ${gw.lastError ?? ''}',
+            connecting ? L.t('chat.connecting') : L.t('chat.offline', {'error': gw.lastError ?? ''}),
             style: const TextStyle(color: kMfg, fontSize: 12),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (!connecting) DBtn(label: 'إعادة', kind: DBtnKind.ghost, dense: true, onPressed: gw.retryNow),
+        if (!connecting) DBtn(label: L.t('common.retry'), kind: DBtnKind.ghost, dense: true, onPressed: gw.retryNow),
       ]),
       ),
     );
@@ -750,13 +759,13 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = store.sid == null ? 'Hermes' : (store.title.isEmpty ? 'جلسة جديدة' : store.title);
+    final title = store.sid == null ? 'Hermes' : (store.title.isEmpty ? L.t('session.new') : store.title);
     return DGlass(
       margin: const EdgeInsets.fromLTRB(8, 6, 8, 2),
       pad: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       radius: 26,
             child: Row(children: [
-        _BarBtn(icon: tb.Menu2.new, tooltip: 'الجلسات', onPressed: onMenu),
+        _BarBtn(icon: tb.Menu2.new, tooltip: L.t('session.list'), onPressed: onMenu),
         const SizedBox(width: 4),
         Expanded(
           child: DTextSwap(
@@ -768,22 +777,22 @@ class TopBar extends StatelessWidget {
         if (store.sid != null)
           _BarBtn(
             icon: tb.DoorExit.new,
-            tooltip: 'إغلاق الجلسة على الجوال',
+            tooltip: L.t('session.close'),
             onPressed: () async {
               final ok = await showDDialog<bool>(context, (c) => DDialog(
-                  title: 'إغلاق الجلسة على الجوال',
+                  title: L.t('session.close'),
                   kind: DNoticeKind.warning,
-                  body: 'سيتوقف الجوال عن الاحتفاظ بهذه الجلسة لتتمكن من فتحها على سطح المكتب. المحادثة محفوظة ويمكن فتحها هنا مجددًا.',
+                  body: L.t('session.closeBody'),
                   actions: [
-                    DBtn(label: 'إلغاء', kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
-                    DBtn(label: 'إغلاق', icon: tb.DoorExit.new, kind: DBtnKind.danger, haptic: Hx.heavy, onPressed: () => Navigator.of(c).pop(true)),
+                    DBtn(label: L.t('common.cancel'), kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
+                    DBtn(label: L.t('common.close'), icon: tb.DoorExit.new, kind: DBtnKind.danger, haptic: Hx.heavy, onPressed: () => Navigator.of(c).pop(true)),
                   ],
                 ),
               );
               if (ok == true) store.closeSession();
             },
           ),
-        _BarBtn(icon: tb.Edit.new, tooltip: 'جلسة جديدة', onPressed: store.newSession),
+        _BarBtn(icon: tb.Edit.new, tooltip: L.t('session.new'), onPressed: store.newSession),
       ]),
     );
   }
@@ -817,20 +826,23 @@ String _when(double ts) {
   final day = DateTime(d.year, d.month, d.day);
   final hm = '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   if (day == today) return hm;
-  if (today.difference(day).inDays == 1) return 'أمس';
-  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-  return '${d.day} ${months[d.month - 1]}';
+  if (today.difference(day).inDays == 1) return L.t('date.yesterday');
+  const months = [
+    'month.1', 'month.2', 'month.3', 'month.4', 'month.5', 'month.6',
+    'month.7', 'month.8', 'month.9', 'month.10', 'month.11', 'month.12',
+  ];
+  return '${d.day} ${L.t(months[d.month - 1])}';
 }
 
 String _sourceLabel(String s) => switch (s) {
-      'desktop' => 'سطح المكتب',
-      'mobile' => 'الجوال',
-      'cli' || 'tui' => 'الطرفية',
-      'telegram' => 'تيليجرام',
-      'whatsapp' => 'واتساب',
-      'cron' => 'مهمة مجدولة',
-      'import-claude' => 'مستورد من Claude',
-      '' => 'جلسة',
+      'desktop' => L.t('surface.desktop'),
+      'mobile' => L.t('surface.mobile'),
+      'cli' || 'tui' => L.t('surface.terminal'),
+      'telegram' => L.t('surface.telegram'),
+      'whatsapp' => L.t('surface.whatsapp'),
+      'cron' => L.t('surface.cron'),
+      'import-claude' => L.t('surface.importClaude'),
+      '' => L.t('surface.session'),
       _ => s,
     };
 
@@ -869,12 +881,12 @@ class _SessionsDrawerState extends State<SessionsDrawer> {
 
     Future<void> confirmLogout() async {
       final ok = await showDDialog<bool>(context, (c) => DDialog(
-          title: 'تسجيل الخروج',
+          title: L.t('logout.title'),
           kind: DNoticeKind.warning,
-          body: 'ستُنهى الجلسة الحالية لهذه البوابة. البوابات المحفوظة تبقى في «البوابات والاتصال».',
+          body: L.t('logout.body'),
           actions: [
-            DBtn(label: 'إلغاء', kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
-            DBtn(label: 'خروج', icon: tb.Logout.new, kind: DBtnKind.danger, haptic: Hx.heavy, onPressed: () => Navigator.of(c).pop(true)),
+            DBtn(label: L.t('common.cancel'), kind: DBtnKind.outline, onPressed: () => Navigator.of(c).pop(false)),
+            DBtn(label: L.t('logout.action'), icon: tb.Logout.new, kind: DBtnKind.danger, haptic: Hx.heavy, onPressed: () => Navigator.of(c).pop(true)),
           ],
         ),
       );
@@ -915,14 +927,14 @@ class _SessionsDrawerState extends State<SessionsDrawer> {
                   const SizedBox(width: 9),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                      Text(r.title.isEmpty ? 'جلسة بلا عنوان' : r.title,
+                      Text(r.title.isEmpty ? L.t('session.untitled') : r.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection: _dirOf(r.title),
                           style: txt(14, weight: on ? FontWeight.w600 : FontWeight.w400, height: 1.35)),
                       const SizedBox(height: 2),
-                      Text('${_sourceLabel(r.source)}  ·  بدأت ${_when(r.startedAt)}',
-                          textDirection: TextDirection.rtl, style: txt(11.5, color: D.faint, height: 1.3)),
+                      Text(L.t('session.startedMeta', {'source': _sourceLabel(r.source), 'when': _when(r.startedAt)}),
+                          textDirection: L.dir, style: txt(11.5, color: D.faint, height: 1.3)),
                     ]),
                   ),
                   if (busy) ...[const SizedBox(width: 10), const StatusDot(busy: true)],
@@ -950,7 +962,7 @@ class _SessionsDrawerState extends State<SessionsDrawer> {
                 StatusDot(busy: a.busy),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(a.title.isEmpty ? 'جلسة بلا عنوان' : a.title,
+                  child: Text(a.title.isEmpty ? L.t('session.untitled') : a.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textDirection: _dirOf(a.title),
@@ -1021,7 +1033,7 @@ class _SessionsDrawerState extends State<SessionsDrawer> {
               child: Row(children: [
                 Expanded(child: Text('Hermes', style: txt(22, weight: FontWeight.w700, height: 1.2))),
                 Tooltip(
-                  message: 'تحديث',
+                  message: L.t('common.refresh'),
                   child: DIconBtn(
                     icon: tb.Refresh.new,
                     size: 40,
@@ -1045,9 +1057,9 @@ class _SessionsDrawerState extends State<SessionsDrawer> {
                         onChanged: (v) => setState(() => q = v),
                         style: txt(14),
                         cursorColor: D.accent,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           isDense: true,
-                          hintText: 'ابحث في الجلسات',
+                          hintText: L.t('session.searchHint'),
                           hintStyle: TextStyle(color: D.faint, fontSize: 14),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.zero,
@@ -1062,7 +1074,7 @@ class _SessionsDrawerState extends State<SessionsDrawer> {
                 icon: tb.Edit.new,
                 size: 44,
                 primary: true,
-                tooltip: 'جلسة جديدة',
+                tooltip: L.t('session.new'),
                 onPressed: () {
                   Navigator.of(context).pop();
                   store.newSession();
@@ -1074,27 +1086,27 @@ class _SessionsDrawerState extends State<SessionsDrawer> {
                   ? const Center(child: CircularProgressIndicator(color: kPrimary))
                   : ListView(padding: const EdgeInsets.only(top: 4), children: [
                       if (store.active.isNotEmpty) ...[
-                        DSection('الجلسات النشطة', trailing: Text('${store.active.length}', style: txt(11.5, color: D.muted))),
+                        DSection(L.t('session.active'), trailing: Text('${store.active.length}', style: txt(11.5, color: D.muted))),
                         ...store.active.map(activeTile),
                       ],
                       if (rows.isEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 48),
-                          child: Center(child: Text(q.isEmpty ? 'لا توجد جلسات' : 'لا نتائج', style: txt(13.5, color: D.muted))),
+                          child: Center(child: Text(q.isEmpty ? L.t('session.none') : L.t('common.noResults'), style: txt(13.5, color: D.muted))),
                         ),
                       // The server orders by last activity; the row shows when the
                       // session began, so the list is labelled by activity, not by date.
-                      if (rows.isNotEmpty) DSection('الأحدث نشاطًا'),
+                      if (rows.isNotEmpty) DSection(L.t('session.recent')),
                       ...rows.map(tile),
                     ]),
             ),
             Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 6), color: D.borderSoft),
             if (widget.onConnections != null)
-              footerBtn(tb.Server2.new, 'البوابات والاتصال', widget.onConnections!, value: _connName),
-            if (widget.onBackground != null) footerBtn(tb.Bolt.new, 'الاتصال في الخلفية', widget.onBackground!),
-            footerBtn(tb.Heart.new, 'ادعم المشروع', () => openExternalUrl(kSponsorUrl), value: 'GitHub Sponsors'),
+              footerBtn(tb.Server2.new, L.t('nav.gateways'), widget.onConnections!, value: _connName),
+            if (widget.onBackground != null) footerBtn(tb.Bolt.new, L.t('bg.title'), widget.onBackground!),
+            footerBtn(tb.Heart.new, L.t('nav.sponsor'), () => openExternalUrl(kSponsorUrl), value: 'GitHub Sponsors'),
             Row(children: [
-              Expanded(child: footerBtn(tb.Logout.new, 'تسجيل الخروج', confirmLogout)),
+              Expanded(child: footerBtn(tb.Logout.new, L.t('logout.title'), confirmLogout)),
               const BioToggle(),
             ]),
           ]),
@@ -1111,10 +1123,10 @@ class ChatView extends StatelessWidget {
   /// Room taken by the glass bars floating over the transcript.
   final EdgeInsets insets;
 
-  static const _starters = <(IconCtor, String)>[
-    (tb.ListCheck.new, 'لخّص ما أنجزته في آخر جلسة'),
-    (tb.Terminal2.new, 'افحص حالة الخادم وأبلغني بأي مشكلة'),
-    (tb.FileText.new, 'اقرأ الملف المرفق واستخرج أهم النقاط'),
+  static List<(IconCtor, String)> get _starters => [
+    (tb.ListCheck.new, L.t('starter.summary')),
+    (tb.Terminal2.new, L.t('starter.serverCheck')),
+    (tb.FileText.new, L.t('starter.readFile')),
   ];
 
   @override
@@ -1141,10 +1153,10 @@ class ChatView extends StatelessWidget {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             ic(tb.Messages.new, size: 36),
             const SizedBox(height: 14),
-            Text('اختر جلسة من القائمة أو ابدأ جلسة جديدة',
+            Text(L.t('chat.pickSession'),
                 textAlign: TextAlign.center, style: txt(14, color: D.muted)),
             const SizedBox(height: 18),
-            DBtn(label: 'جلسة جديدة', icon: tb.Edit.new, onPressed: store.newSession),
+            DBtn(label: L.t('session.new'), icon: tb.Edit.new, onPressed: store.newSession),
           ]),
         ),
       );
@@ -1160,9 +1172,9 @@ class ChatView extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('بماذا نبدأ؟', style: txt(28, weight: FontWeight.w700, height: 1.25)),
+                Text(L.t('chat.startPrompt'), style: txt(28, weight: FontWeight.w700, height: 1.25)),
                 const SizedBox(height: 6),
-                Text('يعمل Hermes على خادمك بأدواته وملفاته.', style: txt(14, color: D.muted)),
+                Text(L.t('chat.startHint'), style: txt(14, color: D.muted)),
                 const SizedBox(height: 22),
                 for (final (icon, label) in _starters)
                   Padding(
@@ -1210,7 +1222,7 @@ class RunningLine extends StatelessWidget {
         const StatusDot(busy: true),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(store.statusText.isEmpty ? 'Hermes يعمل الآن...' : store.statusText,
+          child: Text(store.statusText.isEmpty ? L.t('chat.hermesRunning') : store.statusText,
               maxLines: 1, overflow: TextOverflow.ellipsis, style: txt(12.5, color: D.muted)),
         ),
       ]),
@@ -1233,7 +1245,7 @@ class _MessageTileState extends State<MessageTile> {
   void _copy(String t) {
     HapticFeedback.mediumImpact();
     Clipboard.setData(ClipboardData(text: t));
-    _snack('تم النسخ');
+    _snack(L.t('common.copied'));
   }
 
   @override
@@ -1287,21 +1299,21 @@ class _MessageTileState extends State<MessageTile> {
             Padding(padding: const EdgeInsets.only(top: 8), child: MediaCard(path: path)),
           if (body.isNotEmpty && it.done)
             DActionRow(textDirection: _dirOf(body), actions: [
-              (tb.Copy.new, 'نسخ', () => _copy(body)),
+              (tb.Copy.new, L.t('common.copy'), () => _copy(body)),
             ]),
         ]);
       case 'thinking':
         final live = !it.done;
         final label = live
-            ? 'يفكر...'
+            ? L.t('chat.thinking')
             : it.seconds != null && it.seconds! > 0
-                ? 'فكّر لمدة ${_arDuration(it.seconds!)}'
-                : 'التفكير';
+                ? L.t('chat.thoughtFor', {'duration': _duration(it.seconds!)})
+                : L.t('chat.reasoning');
         return DStepRow(
           icon: tb.Brain.new,
           tone: live ? D.accent : D.muted,
           label: label,
-          labelDirection: TextDirection.rtl,
+          labelDirection: _dirOf(label),
           detail: !open && live ? _tail(it.text, 80) : '',
           trailing: live ? DElapsed(from: it.started) : null,
           open: open,
@@ -1366,7 +1378,8 @@ class _MessageTileState extends State<MessageTile> {
   }
 }
 
-/// "12 ثانية" / "1 د 04 ث": Arabic units, Latin digits (as elsewhere in the app).
+/// "12 seconds" / "1m 04s" (English) or "12 ثانية" / "1 د 04 ث" (Arabic):
+/// localized units, Latin digits.
 /// Answer typography: accent links, quiet inline code chips, heading weights
 /// that step down instead of shouting, hairline rules.
 final _mdTheme = GptMarkdownThemeData(
@@ -1390,9 +1403,9 @@ final _mdTheme = GptMarkdownThemeData(
   ),
 );
 
-String _arDuration(int s) {
-  if (s < 60) return '$s ثانية';
-  return '${s ~/ 60} د ${(s % 60).toString().padLeft(2, '0')} ث';
+String _duration(int s) {
+  if (s < 60) return L.t('duration.seconds', {'n': s});
+  return L.t('duration.minSec', {'m': s ~/ 60, 's': (s % 60).toString().padLeft(2, '0')});
 }
 
 String _tail(String s, int n) {
@@ -1454,7 +1467,7 @@ class _RequestCardState extends State<RequestCard> {
           Row(children: [
             ic(isApproval ? tb.ShieldCheck.new : tb.HelpCircle.new, size: 16, color: kFg),
             const SizedBox(width: 8),
-            Text(isApproval ? 'مطلوب إذن بالتنفيذ' : 'سؤال من Hermes',
+            Text(isApproval ? L.t('request.approvalTitle') : L.t('request.questionTitle'),
                 style: const TextStyle(fontWeight: FontWeight.w600, color: kFg)),
           ]),
           const SizedBox(height: 8),
@@ -1475,12 +1488,12 @@ class _RequestCardState extends State<RequestCard> {
             const SizedBox(height: 10),
             Row(children: [
               Expanded(
-                  child: DBtn(label: 'سماح', dense: true, haptic: Hx.heavy, onPressed: () => widget.store.answer({'choice': 'once'}))),
+                  child: DBtn(label: L.t('request.allow'), dense: true, haptic: Hx.heavy, onPressed: () => widget.store.answer({'choice': 'once'}))),
               const SizedBox(width: 8),
               if (p.params['allow_session'] != false) ...[
                 Expanded(
                     child: DBtn(
-                        label: 'للجلسة',
+                        label: L.t('request.forSession'),
                         dense: true,
                         kind: DBtnKind.outline,
                         onPressed: () => widget.store.answer({'choice': 'session'}))),
@@ -1488,7 +1501,7 @@ class _RequestCardState extends State<RequestCard> {
               ],
               Expanded(
                   child: DBtn(
-                      label: 'رفض',
+                      label: L.t('request.deny'),
                       dense: true,
                       kind: DBtnKind.outline,
                       haptic: Hx.heavy,
@@ -1513,9 +1526,9 @@ class _RequestCardState extends State<RequestCard> {
                     controller: ctl,
                     style: txt(13.5),
                     cursorColor: D.accent,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       isDense: true,
-                      hintText: 'إجابة أخرى',
+                      hintText: L.t('request.otherAnswer'),
                       hintStyle: TextStyle(color: D.muted, fontSize: 13.5),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.zero,
@@ -1593,7 +1606,7 @@ class _ComposerState extends State<Composer> {
 
   Future<void> startRec() async {
     if (!await rec.hasPermission()) {
-      if (mounted) _say('يلزم إذن الميكروفون');
+      if (mounted) _say(L.t('mic.permission'));
       return;
     }
     final dir = await getTemporaryDirectory();
@@ -1626,7 +1639,7 @@ class _ComposerState extends State<Composer> {
         ctl.text = cur.isEmpty ? text : '$cur $text';
         ctl.selection = TextSelection.collapsed(offset: ctl.text.length);
       } else if (mounted) {
-        _say('لم يُلتقط كلام');
+        _say(L.t('mic.noSpeech'));
       }
     } catch (e) {
       if (mounted) _say('$e');
@@ -1647,13 +1660,13 @@ class _ComposerState extends State<Composer> {
     try {
       files = await FilePicker.pickFiles();
     } catch (e) {
-      _say('تعذر فتح منتقي الملفات: $e');
+      _say(L.t('attach.pickerFailed', {'error': e}));
       return;
     }
     for (final f in files) {
       final len = await f.length() ?? 0;
       if (len > 25 * 1024 * 1024) {
-        _say('${f.name} أكبر من 25 ميجابايت');
+        _say(L.t('attach.tooLarge', {'name': f.name}));
         continue;
       }
       widget.store.attach(f.name, await f.readAsBytes());
@@ -1694,10 +1707,10 @@ class _ComposerState extends State<Composer> {
             Row(children: [
               ic(tb.Clock.new, size: 15),
               const SizedBox(width: 7),
-              Expanded(child: Text('في الطابور (${store.queued.length})', style: txt(12.5, weight: FontWeight.w600))),
+              Expanded(child: Text(L.t('queue.title', {'n': store.queued.length}), style: txt(12.5, weight: FontWeight.w600))),
               if (!store.running)
                 DIconBtn(
-                  icon: tb.Refresh.new, size: 28, tooltip: 'إعادة إرسال الطابور',
+                  icon: tb.Refresh.new, size: 28, tooltip: L.t('queue.resend'),
                   onPressed: store.submitting ? null : store.retryQueue,
                 ),
             ]),
@@ -1707,7 +1720,7 @@ class _ComposerState extends State<Composer> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Row(children: [
                     Expanded(
-                      child: Text(store.queued[i].text.isEmpty ? 'مرفقات' : store.queued[i].text,
+                      child: Text(store.queued[i].text.isEmpty ? L.t('queue.attachments') : store.queued[i].text,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection: _dirOf(store.queued[i].text),
@@ -1741,7 +1754,7 @@ class _ComposerState extends State<Composer> {
               itemCount: shown.length,
               itemBuilder: (context, i) {
                 final c = shown[i];
-                final isSkill = c.group == 'المهارات';
+                final isSkill = c.group == kSkillsGroup;
                 final warn = c.name == '/yolo';
                 return InkWell(
                   borderRadius: BorderRadius.circular(D.rMd),
@@ -1765,7 +1778,7 @@ class _ComposerState extends State<Composer> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          isSkill ? 'مهارة' : c.description,
+                          isSkill ? L.t('commands.skill') : c.description,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection: _dirOf(c.description),
@@ -1825,7 +1838,7 @@ class _ComposerState extends State<Composer> {
                 Text('${elapsed.inMinutes}:${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}',
                     textDirection: TextDirection.ltr, style: txt(13, color: D.danger)),
                 const SizedBox(width: 10),
-                Expanded(child: Text('جارٍ التسجيل، يُفرَّغ عبر Groq عند الإيقاف', style: txt(12, color: D.muted))),
+                Expanded(child: Text(L.t('mic.recording'), style: txt(12, color: D.muted))),
               ]),
             )
           : Padding(
@@ -1835,15 +1848,15 @@ class _ComposerState extends State<Composer> {
               controller: ctl,
               minLines: 1,
               maxLines: 6,
-              textDirection: _dirOf(ctl.text.isEmpty ? 'ا' : ctl.text),
+              textDirection: _dirOf(ctl.text),
               style: txt(15, height: 1.45),
               cursorColor: D.accent,
               decoration: InputDecoration(
                 hintText: transcribing
-                    ? 'جارٍ التفريغ...'
+                    ? L.t('mic.transcribing')
                     : store.running
-                        ? 'Hermes يعمل الآن: اكتب للتوجيه أو للطابور'
-                        : 'اكتب رسالة أو / للأوامر',
+                        ? L.t('composer.steerHint')
+                        : L.t('composer.hint'),
                 hintStyle: txt(14, color: D.muted),
                 border: InputBorder.none,
                 isDense: true,
@@ -1861,14 +1874,14 @@ class _ComposerState extends State<Composer> {
                 alignment: AlignmentDirectional.centerStart,
                 child: Wrap(spacing: 8, runSpacing: 8, children: [
                   DBtn(
-                    label: 'توجيه',
+                    label: L.t('composer.steer'),
                     icon: tb.Directions.new,
                     dense: true,
                     haptic: Hx.heavy,
                     onPressed: store.submitting ? null : () => steerOrQueue(steer: true),
                   ),
                   DBtn(
-                    label: 'إلى الطابور',
+                    label: L.t('composer.toQueue'),
                     icon: tb.Clock.new,
                     kind: DBtnKind.outline,
                     dense: true,
@@ -1883,7 +1896,7 @@ class _ComposerState extends State<Composer> {
           Row(children: [
             if (recording) ...[
               DBtn(
-                label: 'إلغاء',
+                label: L.t('common.cancel'),
                 icon: tb.X.new,
                 kind: DBtnKind.ghost,
                 dense: true,
@@ -1891,11 +1904,11 @@ class _ComposerState extends State<Composer> {
               ),
               const Spacer(),
             ] else ...[
-              DIconBtn(icon: tb.Paperclip.new, size: 40, tooltip: 'إرفاق ملف', onPressed: pickFiles),
+              DIconBtn(icon: tb.Paperclip.new, size: 40, tooltip: L.t('composer.attach'), onPressed: pickFiles),
               DIconBtn(
                 icon: tb.Slash.new,
                 size: 40,
-                tooltip: 'الأوامر',
+                tooltip: L.t('composer.commands'),
                 onPressed: () {
                   ctl.text = '/';
                   ctl.selection = const TextSelection.collapsed(offset: 1);
@@ -1924,7 +1937,7 @@ class _ComposerState extends State<Composer> {
                 icon: recording ? tb.PlayerStop.new : tb.Microphone.new,
                 active: recording,
                 size: 40,
-                tooltip: recording ? 'إنهاء التسجيل' : 'إملاء صوتي',
+                tooltip: recording ? L.t('mic.finish') : L.t('mic.dictate'),
                 haptic: recording ? Hx.medium : Hx.heavy,
                 onPressed: recording ? () => stopRec() : startRec,
               ),
@@ -1935,7 +1948,7 @@ class _ComposerState extends State<Composer> {
                 primary: true,
                 active: store.running,
                 size: 40,
-                tooltip: store.running ? 'إيقاف' : 'إرسال',
+                tooltip: store.running ? L.t('common.stop') : L.t('composer.send'),
                 haptic: store.running ? Hx.heavy : Hx.medium,
                 onPressed: store.running ? store.interrupt : (canAct ? send : null),
               ),
@@ -2108,15 +2121,15 @@ class _ModelSheetState extends State<ModelSheet> {
                           confirm: (message) async {
                             if (!context.mounted) return false;
                             return await showDDialog<bool>(context, (c) => DDialog(
-                              title: 'تأكيد تغيير النموذج',
+                              title: L.t('model.confirmTitle'),
                               kind: DNoticeKind.warning,
-                              body: 'النموذج المختار: ${m.model}\n\n'
-                                  'قد يؤثر التغيير على سعة السياق أو تكلفة المحادثة. راجع تحذير الخادم:\n\n'
+                              body: L.t('model.confirmModel', {'model': m.model}) +
+                                  L.t('model.confirmBody') +
                                   '$message',
                               actions: [
-                                DBtn(label: 'إبقاء النموذج الحالي', kind: DBtnKind.outline,
+                                DBtn(label: L.t('model.keepCurrent'), kind: DBtnKind.outline,
                                     onPressed: () => Navigator.of(c).pop(false)),
-                                DBtn(label: 'تغيير النموذج', icon: tb.Check.new,
+                                DBtn(label: L.t('model.change'), icon: tb.Check.new,
                                     onPressed: () => Navigator.of(c).pop(true)),
                               ],
                             )) ?? false;
@@ -2199,7 +2212,7 @@ class _ModelSheetState extends State<ModelSheet> {
                 child: Row(children: [
                   ic(tb.Cpu.new, size: 18, color: D.accent),
                   const SizedBox(width: 8),
-                  Expanded(child: Text('النموذج والإعدادات', style: txt(17, weight: FontWeight.w700))),
+                  Expanded(child: Text(L.t('model.settingsTitle'), style: txt(17, weight: FontWeight.w700))),
                   AnimatedOpacity(
                     opacity: busy ? 1 : 0,
                     duration: D.tIn,
@@ -2218,16 +2231,16 @@ class _ModelSheetState extends State<ModelSheet> {
                   child: Column(children: [
                     _effortRow(effort),
                     Container(height: 1, margin: const EdgeInsetsDirectional.only(start: 43), color: D.borderSoft),
-                    _switchRow(tb.Bolt.new, 'الوضع السريع', fast, (v) => s.setConfig('fast', v ? 'fast' : 'normal')),
+                    _switchRow(tb.Bolt.new, L.t('model.fastMode'), fast, (v) => s.setConfig('fast', v ? 'fast' : 'normal')),
                     Container(height: 1, margin: const EdgeInsetsDirectional.only(start: 43), color: D.borderSoft),
-                    _switchRow(tb.ShieldOff.new, 'الموافقة التلقائية لهذه الجلسة', yolo,
+                    _switchRow(tb.ShieldOff.new, L.t('model.autoApprove'), yolo,
                         (v) => s.setConfig('yolo', v ? 'on' : 'off')),
                   ]),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-                child: Text('النماذج', style: txt(12, color: D.faint, weight: FontWeight.w600, height: 1.3)),
+                child: Text(L.t('model.models'), style: txt(12, color: D.faint, weight: FontWeight.w600, height: 1.3)),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2242,7 +2255,7 @@ class _ModelSheetState extends State<ModelSheet> {
                         cursorColor: D.accent,
                         decoration: InputDecoration(
                           isDense: true,
-                          hintText: 'ابحث عن نموذج أو مزوّد',
+                          hintText: L.t('model.searchHint'),
                           hintStyle: txt(14, color: D.faint),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.zero,
@@ -2261,7 +2274,7 @@ class _ModelSheetState extends State<ModelSheet> {
                   child: s.models.isEmpty
                       ? const Center(key: ValueKey('load'), child: CircularProgressIndicator(color: D.accent))
                       : list.isEmpty
-                          ? Center(key: const ValueKey('none'), child: Text('لا نتائج', style: txt(13, color: D.muted)))
+                          ? Center(key: const ValueKey('none'), child: Text(L.t('common.noResults'), style: txt(13, color: D.muted)))
                           : ListView(
                               key: const ValueKey('list'),
                               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -2280,12 +2293,12 @@ class _ModelSheetState extends State<ModelSheet> {
 
 
 String _statusLabel(String s) => switch (s) {
-      'working' => 'يعمل',
-      'streaming' => 'يكتب',
-      'waiting' => 'ينتظر ردك',
-      'starting' => 'يبدأ',
-      'resuming' => 'يستأنف',
-      _ => 'خامل',
+      'working' => L.t('status.working'),
+      'streaming' => L.t('status.writing'),
+      'waiting' => L.t('status.waiting'),
+      'starting' => L.t('status.starting'),
+      'resuming' => L.t('status.resuming'),
+      _ => L.t('status.idle'),
     };
 
 /// Pulsing green dot for sessions/agents that are working.
@@ -2355,13 +2368,13 @@ class _BioToggleState extends State<BioToggle> {
       icon: tb.Fingerprint.new,
       size: 40,
       tint: on ? kOk : kMfg,
-      tooltip: on ? 'القفل بالبصمة مفعّل' : 'القفل بالبصمة متوقف',
+      tooltip: on ? L.t('bio.onTooltip') : L.t('bio.offTooltip'),
       onPressed: () async {
         if (!await biometricCheck()) return;
         await HermesApi.setBiometric(!on);
         setState(() => on = !on);
         if (context.mounted) {
-          _snack(on ? 'تم تفعيل القفل بالبصمة' : 'تم إيقاف القفل بالبصمة');
+          _snack(on ? L.t('bio.enabled') : L.t('bio.disabled'));
         }
       },
     );
@@ -2436,7 +2449,7 @@ class AttachChip extends StatelessWidget {
         a.uploading
             ? const RepaintBoundary(child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.6, color: D.accent)))
             : Tooltip(
-                message: a.error == null ? a.name : 'فشل الرفع؛ أعد الإرسال للمحاولة: ${a.error}',
+                message: a.error == null ? a.name : L.t('attach.uploadFailed', {'error': a.error}),
                 child: ic(a.error == null ? _fileIcon(a.name) : tb.AlertCircle.new,
                     size: 15, color: a.error == null ? D.accent : D.danger),
               ),
@@ -2505,7 +2518,7 @@ class _MediaCardState extends State<MediaCard> {
     await f.parent.create(recursive: true);
     await f.writeAsBytes(b);
     final r = await OpenFilex.open(f.path);
-    if (r.type != ResultType.done && mounted) setState(() => error = 'لا يوجد تطبيق لفتح هذا الملف');
+    if (r.type != ResultType.done && mounted) setState(() => error = L.t('file.noApp'));
   }
 
   @override
@@ -2545,7 +2558,7 @@ class _MediaCardState extends State<MediaCard> {
                       overflow: TextOverflow.ellipsis,
                       textDirection: TextDirection.ltr,
                       style: txt(13.5, weight: FontWeight.w600)),
-                  Text(error ?? (bytes == null ? 'اضغط للتنزيل والفتح' : 'اضغط للفتح'),
+                  Text(error ?? (bytes == null ? L.t('file.tapToDownload') : L.t('file.tapToOpen')),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: txt(11.5, color: error != null ? D.danger : D.muted)),
@@ -2627,7 +2640,7 @@ class _PageBar extends StatelessWidget {
           DIconBtn(
             icon: tb.ArrowRight.new,
             size: 40,
-            tooltip: 'رجوع',
+            tooltip: L.t('common.back'),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           const SizedBox(width: 6),
@@ -2689,7 +2702,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
       if (!mounted) return;
       setState(() {
         busyId = '';
-        error = 'تعذر الاتصال بـ «${c.name.isEmpty ? Connections.defaultName(c.url) : c.name}»: $e';
+        error = L.t('gateways.connectFailed', {'name': c.name.isEmpty ? Connections.defaultName(c.url) : c.name, 'error': e});
       });
     }
   }
@@ -2769,7 +2782,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                   padding: const EdgeInsets.symmetric(horizontal: 7),
                   child: ic(tb.CircleCheck.new, size: 19, color: D.accent),
                 ),
-              DIconBtn(icon: tb.Edit.new, size: 36, tooltip: 'تعديل', onPressed: busy ? null : () => _edit(c)),
+              DIconBtn(icon: tb.Edit.new, size: 36, tooltip: L.t('common.edit'), onPressed: busy ? null : () => _edit(c)),
             ]),
           ),
         ),
@@ -2798,7 +2811,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                    child: Text('إضافة بوابة', style: txt(14.5, weight: FontWeight.w600, color: D.accent))),
+                    child: Text(L.t('login.addGateway'), style: txt(14.5, weight: FontWeight.w600, color: D.accent))),
               ]),
             ),
           ),
@@ -2811,7 +2824,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
       backgroundColor: kBg,
       body: DAmbient(child: SafeArea(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const _PageBar(title: 'البوابات والاتصال'),
+          _PageBar(title: L.t('nav.gateways')),
           Expanded(
             child: !loaded
                 ? const Center(child: CircularProgressIndicator(color: kPrimary))
@@ -2832,7 +2845,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                       ),
                       const SizedBox(height: 12),
                     ],
-                    const DSection('البوابات المحفوظة'),
+                    DSection(L.t('gateways.saved')),
                     DGlass(
                       tint: G.panelTint,
           panel: true,
@@ -2858,7 +2871,7 @@ class _ConnectionsPageState extends State<ConnectionsPage> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Text(
-                        'المحلي يعمل عبر Tailscale والريموت عبر HTTPS بدون Tailscale. التبديل يغلق الجلسة الحالية ويفتح اتصالًا جديدًا بالبوابة المختارة.',
+                        L.t('gateways.help'),
                         style: txt(11.5, color: D.faint, height: 1.5),
                       ),
                     ),
@@ -2902,9 +2915,9 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
   }
 
   String? _validate() {
-    if (url.text.trim().isEmpty) return 'أدخل عنوان الخادم.';
-    if (user.text.trim().isEmpty) return 'أدخل اسم المستخدم.';
-    if (pass.text.isEmpty) return 'أدخل كلمة المرور.';
+    if (url.text.trim().isEmpty) return L.t('gateways.errUrl');
+    if (user.text.trim().isEmpty) return L.t('gateways.errUser');
+    if (pass.text.isEmpty) return L.t('gateways.errPass');
     return null;
   }
 
@@ -2932,7 +2945,7 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
     try {
       await a.login();
       await a.ticket();
-      if (mounted) setState(() => okMsg = 'الاتصال ناجح — الخادم يستجيب.');
+      if (mounted) setState(() => okMsg = L.t('gateways.ok'));
     } catch (e) {
       if (mounted) setState(() => error = '$e');
     }
@@ -2969,12 +2982,12 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
     if (c == null) return;
     final label = c.name.isEmpty ? Connections.defaultName(c.url) : c.name;
     final ok = await showDDialog<bool>(context, (x) => DDialog(
-          title: 'حذف البوابة',
+          title: L.t('gateways.deleteTitle'),
           kind: DNoticeKind.warning,
-          body: 'سيُحذف «$label» من هذا الجهاز. يمكن إضافته مرة أخرى في أي وقت.',
+          body: L.t('gateways.deleteBody', {'name': label}),
           actions: [
-            DBtn(label: 'إلغاء', kind: DBtnKind.outline, onPressed: () => Navigator.of(x).pop(false)),
-            DBtn(label: 'حذف', icon: tb.Trash.new, kind: DBtnKind.danger, haptic: Hx.heavy, onPressed: () => Navigator.of(x).pop(true)),
+            DBtn(label: L.t('common.cancel'), kind: DBtnKind.outline, onPressed: () => Navigator.of(x).pop(false)),
+            DBtn(label: L.t('common.delete'), icon: tb.Trash.new, kind: DBtnKind.danger, haptic: Hx.heavy, onPressed: () => Navigator.of(x).pop(true)),
           ],
         ));
     if (ok != true || !mounted) return;
@@ -3023,7 +3036,7 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
       backgroundColor: kBg,
       body: DAmbient(child: SafeArea(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          _PageBar(title: editing ? 'تعديل البوابة' : 'بوابة جديدة'),
+          _PageBar(title: editing ? L.t('gateways.editTitle') : L.t('gateways.newTitle')),
           Expanded(
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
               DGlass(
@@ -3032,26 +3045,26 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
                                 tint: G.panelTint,
           panel: true,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  _efield('الاسم', name, tb.Tag.new, hint: 'اختياري'),
+                  _efield(L.t('gateways.name'), name, tb.Tag.new, hint: L.t('gateways.optional')),
                   const SizedBox(height: 14),
-                  _efield('عنوان الخادم', url, tb.World.new),
+                  _efield(L.t('login.serverAddress'), url, tb.World.new),
                   Padding(
                     padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
-                    child: Text('مثال: 100.64.0.1:9131 أو https://gateway.example.com',
+                    child: Text(L.t('gateways.example'),
                         style: txt(11, color: D.faint, height: 1.4)),
                   ),
                   const SizedBox(height: 12),
-                  _efield('اسم المستخدم', user, tb.User.new),
+                  _efield(L.t('login.username'), user, tb.User.new),
                   const SizedBox(height: 14),
                   _efield(
-                    'كلمة المرور',
+                    L.t('login.password'),
                     pass,
                     tb.Lock.new,
                     obscureField: obscure,
                     suffix: DIconBtn(
                       icon: (obscure ? tb.Eye.new : tb.EyeOff.new),
                       size: 32,
-                      tooltip: obscure ? 'إظهار' : 'إخفاء',
+                      tooltip: obscure ? L.t('common.show') : L.t('common.hide'),
                       onPressed: () => setState(() => obscure = !obscure),
                     ),
                   ),
@@ -3091,7 +3104,7 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
                   Row(children: [
                     Expanded(
                       child: DBtn(
-                        label: testBusy ? 'جارٍ الاختبار...' : 'اختبار الاتصال',
+                        label: testBusy ? L.t('gateways.testing') : L.t('gateways.test'),
                         kind: DBtnKind.outline,
                         icon: tb.PlugConnected.new,
                         onPressed: (busy || testBusy) ? null : _test,
@@ -3100,7 +3113,7 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DBtn(
-                        label: busy ? 'جارٍ الحفظ...' : (editing ? 'حفظ واتصال' : 'إضافة واتصال'),
+                        label: busy ? L.t('common.saving') : (editing ? L.t('gateways.saveConnect') : L.t('gateways.addConnect')),
                         icon: tb.Check.new,
                         onPressed: (busy || testBusy) ? null : _save,
                       ),
@@ -3111,7 +3124,7 @@ class _ConnectionEditorPageState extends State<ConnectionEditorPage> {
               if (editing) ...[
                 const SizedBox(height: 22),
                 DBtn(
-                  label: 'حذف البوابة',
+                  label: L.t('gateways.deleteTitle'),
                   kind: DBtnKind.danger,
                   icon: tb.Trash.new,
                   onPressed: busy ? null : _delete,

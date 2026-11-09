@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default (English) strings. Arabic lives in values-ar. -->
+<resources>
+    <string name="gateway_channel_name">Hermes background connection</string>
+    <string name="gateway_channel_desc">Keeps the conversation connected while you use other apps</string>
+    <string name="gateway_status_connecting">Connecting to the server</string>
+    <string name="gateway_status_connected">Connected</string>
+    <string name="gateway_notification_title">Hermes is running in the background</string>
+    <string name="gateway_stop_action">Stop background</string>
+</resources>

@@ -24,15 +24,15 @@ class GatewayService : Service() {
         fun update(status: String) { instance?.setStatus(status) }
     }
     private var wakeLock: PowerManager.WakeLock? = null
-    private var status = "جارٍ الاتصال بالخادم"
+    private var status: String? = null
 
     override fun onCreate() {
         super.onCreate()
         instance = this
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(NotificationChannel(CHANNEL,
-            "اتصال Hermes في الخلفية", NotificationManager.IMPORTANCE_LOW).apply {
-            description = "يحافظ على اتصال المحادثة أثناء استخدام تطبيقات أخرى"
+            getString(R.string.gateway_channel_name), NotificationManager.IMPORTANCE_LOW).apply {
+            description = getString(R.string.gateway_channel_desc)
             setShowBadge(false)
         })
         if (Build.VERSION.SDK_INT >= 34) {
@@ -62,14 +62,14 @@ class GatewayService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Hermes يعمل في الخلفية")
-            .setContentText(status)
+            .setContentTitle(getString(R.string.gateway_notification_title))
+            .setContentText(status ?: getString(R.string.gateway_status_connecting))
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setVisibility(Notification.VISIBILITY_PRIVATE)
-            .addAction(Notification.Action.Builder(null, "إيقاف الخلفية", stop).build())
+            .addAction(Notification.Action.Builder(null, getString(R.string.gateway_stop_action), stop).build())
             .build()
     }
 

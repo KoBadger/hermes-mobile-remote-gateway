@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arabic strings, identical to the original hardcoded copy. -->
+<resources>
+    <string name="gateway_channel_name">اتصال Hermes في الخلفية</string>
+    <string name="gateway_channel_desc">يحافظ على اتصال المحادثة أثناء استخدام تطبيقات أخرى</string>
+    <string name="gateway_status_connecting">جارٍ الاتصال بالخادم</string>
+    <string name="gateway_status_connected">متصل</string>
+    <string name="gateway_notification_title">Hermes يعمل في الخلفية</string>
+    <string name="gateway_stop_action">إيقاف الخلفية</string>
+</resources>

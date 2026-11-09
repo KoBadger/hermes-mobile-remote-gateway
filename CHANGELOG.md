@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **English UI.** The app now follows the phone's language: Arabic keeps the original RTL layout, every other locale gets English. One widget tree serves both — `lib/l10n.dart` holds an `ar` and an `en` table read through `L.t('id')` with `{placeholder}` substitution, and the app root switches `Directionality` (RTL/LTR) with the language. Model names and Thinking levels stay English. The Android foreground-service notification follows Android string resources (`values/`, `values-ar/`). No new package dependency.
+
 ## 1.3.2
 
 ### Added
